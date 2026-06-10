@@ -73,6 +73,7 @@ const STYLES = `
     overflow: hidden;
     cursor: crosshair;
     user-select: none;
+    touch-action: none;
     transform: translate(-0.25rem, -0.25rem);
     box-shadow: 0.25rem 0.25rem #000;
   }
@@ -335,13 +336,6 @@ export default function EchoGraph() {
     playNoteAtPercent(pct);
   }, [playNoteAtPercent]);
 
-  const onPointerEnter = useCallback(() => {
-    if (pointsRef.current.length > 0) setSweepActive(true);
-  }, []);
-  const onPointerLeave = useCallback(() => {
-    setSweepActive(false);
-  }, []);
-
   const onKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }, [handleSend]);
@@ -418,9 +412,14 @@ export default function EchoGraph() {
         <section
           className="graph"
           ref={graphRef}
+          onPointerDown={(e) => {
+            e.target.setPointerCapture(e.pointerId);
+            setSweepActive(true);
+            onPointerMove(e);
+          }}
+          onPointerUp={() => setSweepActive(false)}
+          onPointerCancel={() => setSweepActive(false)}
           onPointerMove={onPointerMove}
-          onPointerEnter={onPointerEnter}
-          onPointerLeave={onPointerLeave}
           tabIndex={0}
           aria-label="Interactive graph area"
         >
