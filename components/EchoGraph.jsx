@@ -4,7 +4,7 @@ import * as Tone from 'tone';
 
 const STYLES = `
   :root {
-    --border: 4px solid #000;
+    --border: 2px solid #000;
     --bg: #f5f5f0;
     --card-bg: #fff;
     --accent: #ffcd00;
@@ -53,9 +53,12 @@ const STYLES = `
     font-size: 12px;
     font-weight: 700;
     padding: 6px 12px;
-    border: var(--border);
+    border: 1px solid #000;
+    border-radius: 4px;
     background: #000;
     color: #fff;
+    transform: translate(-0.15rem, -0.15rem);
+    box-shadow: 0.15rem 0.15rem #000;
   }
 
   .graph {
@@ -63,12 +66,15 @@ const STYLES = `
     align-items: center;
     justify-content: center;
     min-height: 300px;
-    border: var(--border);
+    border: 1px solid #000;
+    border-radius: 4px;
     background: var(--card-bg);
     position: relative;
     overflow: hidden;
     cursor: crosshair;
     user-select: none;
+    transform: translate(-0.25rem, -0.25rem);
+    box-shadow: 0.25rem 0.25rem #000;
   }
 
   .placeholder {
@@ -98,11 +104,14 @@ const STYLES = `
     font-family: var(--mono);
     font-size: 16px;
     padding: 14px;
-    border: var(--border);
+    border: 1px solid #000;
+    border-radius: 4px;
     background: var(--card-bg);
     resize: none;
     min-height: 60px;
     outline: none;
+    transform: translate(-0.25rem, -0.25rem);
+    box-shadow: 0.25rem 0.25rem #000;
   }
 
   .textarea:focus {
@@ -116,12 +125,14 @@ const STYLES = `
   }
 
   .btn {
+    --shadow-offset: 0.25rem;
     font-family: var(--font);
     font-size: 14px;
     font-weight: 700;
     padding: 14px 24px;
-    border: var(--border);
-    background: var(--accent, #ffcd00);
+    border: 1px solid #000;
+    border-radius: 4px;
+    background: var(--accent);
     color: #000;
     cursor: pointer;
     text-align: center;
@@ -131,10 +142,16 @@ const STYLES = `
     gap: 8px;
     flex: 1;
     justify-content: center;
+    transition: 0.2s;
+    transform: translate(-0.25rem, -0.25rem);
+    box-shadow: 0.25rem 0.25rem #000;
   }
 
   .btn:active {
-    transform: translate(2px, 2px);
+    transform: translate(0);
+    box-shadow: none;
+    background: #000;
+    color: #fff;
   }
 
   .btn.recording {
@@ -144,21 +161,48 @@ const STYLES = `
   }
 
   .btn-outline {
-    background: var(--card-bg);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 14px 24px;
+    border: 1px solid #000;
+    border-radius: 4px;
+    background: #fff;
     color: #000;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     flex: 0;
+    justify-content: center;
+    transition: 0.2s;
+    transform: translate(-0.25rem, -0.25rem);
+    box-shadow: 0.25rem 0.25rem #000;
   }
 
-  .btn:disabled {
+  .btn-outline:active {
+    transform: translate(0);
+    box-shadow: none;
+    background: #000;
+    color: #fff;
+  }
+
+  .btn:disabled,
+  .btn-outline:disabled {
     opacity: 0.4;
     cursor: not-allowed;
     transform: none;
+    box-shadow: none;
   }
 
   .card {
-    border: var(--border);
+    border: 1px solid #000;
+    border-radius: 4px;
     background: var(--card-bg);
     padding: 20px;
+    transform: translate(-0.25rem, -0.25rem);
+    box-shadow: 0.25rem 0.25rem #000;
   }
 
   .label {
@@ -350,7 +394,7 @@ export default function EchoGraph() {
               {loading ? <span className="spinner" /> : 'GRAPH IT'}
             </button>
             {parsed && (
-              <button className="btn btn-outline" onClick={readAloud}>
+              <button className="btn-outline" onClick={readAloud}>
                 READ ALOUD
               </button>
             )}

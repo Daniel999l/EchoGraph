@@ -18,9 +18,12 @@ const HERO_STYLES = `
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: #666;
-    border: 3px solid #000;
+    border: 1px solid #000;
+    border-radius: 4px;
     padding: 6px 16px;
     background: var(--accent, #ffcd00);
+    transform: translate(-0.2rem, -0.2rem);
+    box-shadow: 0.2rem 0.2rem #000;
   }
 
   .hero-title {
@@ -40,19 +43,26 @@ const HERO_STYLES = `
   }
 
   .hero-cta {
+    --bg: #000;
     font-family: var(--font, 'Inter', system-ui, sans-serif);
     font-size: 16px;
     font-weight: 700;
     padding: 14px 32px;
-    border: 4px solid #000;
+    border: 1px solid var(--bg);
+    border-radius: 4px;
     background: var(--accent, #ffcd00);
     color: #000;
     cursor: pointer;
-    transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+    transition: 0.2s;
+    transform: translate(-0.25rem, -0.25rem);
+    box-shadow: 0.25rem 0.25rem var(--bg);
   }
 
   .hero-cta:active {
-    transform: scale(0.96);
+    transform: translate(0);
+    box-shadow: none;
+    background: var(--bg);
+    color: #fff;
   }
 
   .hero-cta:focus-visible {
