@@ -320,6 +320,7 @@ export default function EchoGraph() {
   const synthRef = useRef(null);
   const pointsRef = useRef([]);
   const autoPlayRef = useRef(null);
+  const sweepNoteRef = useRef(false); // track if sound is currently playing
 
   const computePoints = useCallback(({ expression, xMin, xMax, step }) => {
     try {
@@ -337,17 +338,41 @@ export default function EchoGraph() {
     }
   }, []);
 
-  const playNoteAtPercent = useCallback((pct) => {
+  const getSynth = useCallback(async () => {
+    if (!synthRef.current) {
+      await Tone.start();
+      synthRef.current = new Tone.Synth().toDestination();
+    }
+    return synthRef.current;
+  }, []);
+
+  const playNoteAtPercent = useCallback(async (pct, start = false) => {
+    const synth = await getSynth();
     if (pointsRef.current.length === 0) return;
     setSweepX(pct * 100);
     const idx = Math.floor(pct * (pointsRef.current.length - 1));
     const pt = pointsRef.current[idx];
     if (!pt) return;
     const freq = 200 + ((Math.max(-10, Math.min(10, pt.y)) + 10) / 20) * 1300;
-    if (!synthRef.current) synthRef.current = new Tone.Synth().toDestination();
-    if (Tone.context.state !== 'running') Tone.start();
-    synthRef.current.triggerAttackRelease(freq, '64n');
-  }, []);
+
+    if (start) {
+      // begin continuous note
+      if (Tone.context.state !== 'running') await Tone.start();
+      synth.triggerAttack(freq);
+      sweepNoteRef.current = true;
+    } else {
+      // ramp to new frequency
+      synth.frequency.rampTo(freq, 0.05);
+    }
+  }, [getSynth]);
+
+  const stopNote = useCallback(async () => {
+    const synth = await getSynth();
+    if (sweepNoteRef.current) {
+      synth.triggerRelease();
+      sweepNoteRef.current = false;
+    }
+  }, [getSynth]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim()) return;
@@ -381,12 +406,31 @@ export default function EchoGraph() {
     }
   }, [input, computePoints, autoPlay]);
 
-  const onPointerMove = useCallback((e) => {
-    if (!graphRef.current || pointsRef.current.length === 0) return;
+  const onPointerDown = useCallback(async (e) => {
+    e.target.setPointerCapture(e.pointerId);
+    setSweepActive(true);
     const rect = graphRef.current.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    playNoteAtPercent(pct);
+    await playNoteAtPercent(pct, true);
   }, [playNoteAtPercent]);
+
+  const onPointerMove = useCallback(async (e) => {
+    if (!graphRef.current || pointsRef.current.length === 0) return;
+    if (!sweepNoteRef.current) return; // only update if note is active (pointer down)
+    const rect = graphRef.current.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    await playNoteAtPercent(pct, false);
+  }, [playNoteAtPercent]);
+
+  const onPointerUp = useCallback(async () => {
+    setSweepActive(false);
+    await stopNote();
+  }, [stopNote]);
+
+  const onPointerCancel = useCallback(async () => {
+    setSweepActive(false);
+    await stopNote();
+  }, [stopNote]);
 
   const onKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -423,39 +467,42 @@ export default function EchoGraph() {
 
   useEffect(() => {
     if (!autoPlay || pointsRef.current.length === 0) {
-      if (autoPlayRef.current) {
-        clearInterval(autoPlayRef.current);
-        autoPlayRef.current = null;
-      }
       return;
     }
 
-    const duration = 4000; // ms for full sweep
-    const stepMs = 40;
-    let elapsed = 0;
+    let cancelled = false;
 
-    const interval = setInterval(() => {
-      elapsed += stepMs;
-      const pct = Math.min(1, elapsed / duration);
-      playNoteAtPercent(pct);
-      if (pct >= 1) {
-        clearInterval(interval);
-        autoPlayRef.current = null;
-        setAutoPlay(false);
-        setSweepActive(false);
-      }
-    }, stepMs);
+    (async () => {
+      const synth = await getSynth();
+      if (cancelled) return;
+      if (Tone.context.state !== 'running') await Tone.start();
+      await playNoteAtPercent(0, true);
+      setSweepActive(true);
 
-    autoPlayRef.current = interval;
-    setSweepActive(true);
+      const duration = 4000;
+      const stepMs = 40;
+      let elapsed = 0;
+
+      const interval = setInterval(async () => {
+        if (cancelled) return;
+        elapsed += stepMs;
+        const pct = Math.min(1, elapsed / duration);
+        await playNoteAtPercent(pct, false);
+        if (pct >= 1) {
+          clearInterval(interval);
+          await stopNote();
+          setSweepActive(false);
+          setAutoPlay(false);
+        }
+      }, stepMs);
+    })();
 
     return () => {
-      if (autoPlayRef.current) {
-        clearInterval(autoPlayRef.current);
-        autoPlayRef.current = null;
-      }
+      cancelled = true;
+      stopNote();
+      setSweepActive(false);
     };
-  }, [autoPlay, playNoteAtPercent]);
+  }, [autoPlay, playNoteAtPercent, stopNote, getSynth]);
 
   return (
     <>
@@ -469,13 +516,9 @@ export default function EchoGraph() {
         <section
           className="graph"
           ref={graphRef}
-          onPointerDown={(e) => {
-            e.target.setPointerCapture(e.pointerId);
-            setSweepActive(true);
-            onPointerMove(e);
-          }}
-          onPointerUp={() => setSweepActive(false)}
-          onPointerCancel={() => setSweepActive(false)}
+          onPointerDown={onPointerDown}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
           onPointerMove={onPointerMove}
           tabIndex={0}
           aria-label="Interactive graph area"
