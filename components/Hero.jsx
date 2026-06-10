@@ -45,8 +45,8 @@ const HERO_STYLES = `
     font-weight: 700;
     padding: 14px 32px;
     border: 4px solid #000;
-    background: #000;
-    color: #fff;
+    background: var(--accent, #ffcd00);
+    color: #000;
     cursor: pointer;
     transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
   }

@@ -14,8 +14,17 @@ const STYLES = `
     --mono: 'JetBrains Mono', monospace;
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); font-family: var(--font); color: var(--text); }
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background: var(--bg);
+    font-family: var(--font);
+    color: var(--text);
+  }
 
   .root {
     max-width: 760px;
@@ -70,7 +79,8 @@ const STYLES = `
 
   .sweep {
     position: absolute;
-    top: 0; bottom: 0;
+    top: 0;
+    bottom: 0;
     width: 3px;
     background: var(--accent);
     pointer-events: none;
@@ -111,8 +121,8 @@ const STYLES = `
     font-weight: 700;
     padding: 14px 24px;
     border: var(--border);
-    background: #000;
-    color: #fff;
+    background: var(--accent, #ffcd00);
+    color: #000;
     cursor: pointer;
     text-align: center;
     white-space: nowrap;
@@ -130,10 +140,11 @@ const STYLES = `
   .btn.recording {
     background: var(--danger);
     border-color: var(--danger);
+    color: #fff;
   }
 
   .btn-outline {
-    background: transparent;
+    background: var(--card-bg);
     color: #000;
     flex: 0;
   }
@@ -175,9 +186,19 @@ const STYLES = `
     animation: spin 0.5s linear infinite;
   }
 
-  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 
-  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+  }
 
   @media (max-width: 500px) {
     .root { padding: 0 12px; gap: 20px; }
@@ -297,14 +318,17 @@ export default function EchoGraph() {
         >
           {!parsed && !loading && <span className="placeholder">SAY OR TYPE A MATH EXPRESSION</span>}
           {loading && <span className="spinner" />}
-          <div className={`sweep${sweepActive ? '' : ''}`} style={{ left: `${sweepX}%`, opacity: sweepActive ? 1 : 0 }} />
+          <div
+            className={`sweep${sweepActive ? '' : ''}`}
+            style={{ left: `${sweepX}%`, opacity: sweepActive ? 1 : 0 }}
+          />
         </section>
 
         <div className="controls">
           <textarea
             className="textarea"
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder='e.g. "graph y = x squared from 0 to 10"'
             rows={2}
@@ -312,13 +336,24 @@ export default function EchoGraph() {
           />
 
           <div className="button-row">
-            <button className={`btn${recording ? ' recording' : ''}`} onClick={toggleRecording}>
+            <button
+              className={`btn${recording ? ' recording' : ''}`}
+              onClick={toggleRecording}
+            >
               {recording ? 'STOP' : 'SPEAK'}
             </button>
-            <button className="btn" onClick={handleSend} disabled={!input.trim() || loading}>
+            <button
+              className="btn"
+              onClick={handleSend}
+              disabled={!input.trim() || loading}
+            >
               {loading ? <span className="spinner" /> : 'GRAPH IT'}
             </button>
-            {parsed && <button className="btn btn-outline" onClick={readAloud}>READ ALOUD</button>}
+            {parsed && (
+              <button className="btn btn-outline" onClick={readAloud}>
+                READ ALOUD
+              </button>
+            )}
           </div>
 
           {error && (
