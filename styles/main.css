@@ -1,0 +1,91 @@
+/* EchoGraph — Neobrutalism Design Tokens */
+:root {
+  /* === Palette === */
+  --color-primary: #FDC800;
+  --color-secondary: #432DD7;
+  --color-surface: #FBFBF9;
+  --color-text: #1C293C;
+  --color-success: #16A34A;
+  --color-warning: #D97706;
+  --color-danger: #DC2626;
+
+  /* === Typography === */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --text-xs: 13px;
+  --text-sm: 15px;
+  --text-base: 17px;
+  --text-md: 21px;
+  --text-lg: 27px;
+  --text-xl: 35px;
+
+  /* === Spacing === */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* === Radii === */
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --radius-overlay: 12px;
+}
+
+/* === Reset === */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  color: var(--color-text);
+  background: var(--color-surface);
+  min-height: 100vh;
+}
+
+/* === Interactive States === */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+a,
+button {
+  border-radius: var(--radius-control);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+a:hover,
+button:hover {
+  opacity: 0.9;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+/* === Utility: typography scale === */
+.text-xs { font-size: var(--text-xs); }
+.text-sm { font-size: var(--text-sm); }
+.text-base { font-size: var(--text-base); }
+.text-md { font-size: var(--text-md); }
+.text-lg { font-size: var(--text-lg); }
+.text-xl { font-size: var(--text-xl); }
+
+/* === Utility: spacing margins === */
+.m-1 { margin: var(--space-1); }
+.m-2 { margin: var(--space-2); }
+/* … can be extended */
