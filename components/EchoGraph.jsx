@@ -210,6 +210,40 @@ const STYLES = `
     color: #fff;
   }
 
+  .btn-example {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 14px;
+    border: 1px solid #000;
+    border-radius: 4px;
+    background: var(--card-bg);
+    color: #000;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  .btn-example:active {
+    transform: translate(0) !important;
+    box-shadow: none !important;
+  }
+
+  .examples-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .examples-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+
   .card {
     border: 1px solid #000;
     border-radius: 4px;
@@ -265,6 +299,14 @@ const STYLES = `
   }
 `;
 
+const EXAMPLES = [
+  "graph y = 2x + 3 from -5 to 5",
+  "graph y = x squared between -10 and 10 step 0.5",
+  "graph sin(x) from 0 to 2\u03c0 step 0.05",
+  "graph y = 1/x from 1 to 20",
+  "graph y = x cubed + 2x",
+];
+
 export default function EchoGraph() {
   const [input, setInput] = useState('');
   const [recording, setRecording] = useState(false);
@@ -280,13 +322,19 @@ export default function EchoGraph() {
   const autoPlayRef = useRef(null);
 
   const computePoints = useCallback(({ expression, xMin, xMax, step }) => {
-    const node = math.parse(expression);
-    const compiled = node.compile();
-    const pts = [];
-    for (let x = xMin; x <= xMax; x += step) {
-      pts.push({ x, y: compiled.evaluate({ x }) });
+    try {
+      const node = math.parse(expression);
+      const compiled = node.compile();
+      const pts = [];
+      for (let x = xMin; x <= xMax; x += step) {
+        pts.push({ x, y: compiled.evaluate({ x }) });
+      }
+      return pts;
+    } catch (err) {
+      throw new Error(
+        'Unable to graph this expression. Check your input and try again.'
+      );
     }
-    return pts;
   }, []);
 
   const playNoteAtPercent = useCallback((pct) => {
@@ -313,17 +361,21 @@ export default function EchoGraph() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ input: input.trim() }),
       });
-      if (!res.ok) throw new Error('Failed to parse input');
+      if (!res.ok) {
+        const msg = await res.json().then((d) => d.error).catch(() => null);
+        throw new Error(msg || 'Failed to parse input');
+      }
       const data = await res.json();
       data.xMin ??= -10;
       data.xMax ??= 10;
       data.step ??= 0.1;
-      pointsRef.current = computePoints(data);
+      const pts = computePoints(data);
+      pointsRef.current = pts;
       setParsed(data);
       setInput('');
       setSweepX(0);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -363,6 +415,11 @@ export default function EchoGraph() {
     if (!parsed || pointsRef.current.length === 0) return;
     setAutoPlay((prev) => !prev);
   }, [parsed]);
+
+  const handleExampleClick = useCallback((example) => {
+    setInput(example);
+    setError(null);
+  }, []);
 
   useEffect(() => {
     if (!autoPlay || pointsRef.current.length === 0) {
@@ -451,6 +508,19 @@ export default function EchoGraph() {
             style={{ left: `${sweepX}%`, opacity: sweepActive ? 1 : 0 }}
           />
         </section>
+
+        <div className="examples-section">
+          <span className="examples-label">Try one:</span>
+          {EXAMPLES.map((ex) => (
+            <button
+              key={ex}
+              className="btn-example"
+              onClick={() => handleExampleClick(ex)}
+            >
+              {ex}
+            </button>
+          ))}
+        </div>
 
         <div className="controls">
           <textarea
