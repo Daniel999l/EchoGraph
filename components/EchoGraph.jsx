@@ -77,6 +77,15 @@ const STYLES = `
     box-shadow: 0.25rem 0.25rem #000;
   }
 
+  .graph-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
   .placeholder {
     font-family: var(--mono);
     font-size: 14px;
@@ -90,7 +99,6 @@ const STYLES = `
     width: 3px;
     background: var(--accent);
     pointer-events: none;
-    transition: left 40ms linear;
   }
 
   .controls {
@@ -362,8 +370,29 @@ export default function EchoGraph() {
         >
           {!parsed && !loading && <span className="placeholder">SAY OR TYPE A MATH EXPRESSION</span>}
           {loading && <span className="spinner" />}
+          {parsed && pointsRef.current.length > 0 && (
+            <svg
+              className="graph-svg"
+              viewBox={`0 0 ${parsed.xMax - parsed.xMin} ${parsed.xMax - parsed.xMin}`}
+              preserveAspectRatio="none"
+            >
+              <polyline
+                points={pointsRef.current
+                  .map((p) => {
+                    const xRange = parsed.xMax - parsed.xMin;
+                    const xShift = p.x - parsed.xMin;
+                    const yShift = -p.y + xRange / 2;
+                    return `${xShift},${yShift}`;
+                  })
+                  .join(' ')}
+                fill="none"
+                stroke="var(--text)"
+                strokeWidth="0.2"
+              />
+            </svg>
+          )}
           <div
-            className={`sweep${sweepActive ? '' : ''}`}
+            className="sweep"
             style={{ left: `${sweepX}%`, opacity: sweepActive ? 1 : 0 }}
           />
         </section>
