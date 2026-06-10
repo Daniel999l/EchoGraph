@@ -79,7 +79,7 @@ export default function Hero() {
         <span className="hero-eyebrow">Voice Accessible</span>
         <h1 className="hero-title">Hear&nbsp;Math</h1>
         <p className="hero-subtitle">
-          Speak or type any math expression. Watch it graphed — and hear the
+          Speak or type any math expression. Watch it graphed, and hear the
           function as sound by moving your cursor across the curve.
         </p>
         <button className="hero-cta" onClick={handleTry}>

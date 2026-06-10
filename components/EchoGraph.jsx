@@ -83,14 +83,8 @@ const STYLES = `
     gap: 16px;
   }
 
-  .row {
-    display: flex;
-    gap: 12px;
-    align-items: stretch;
-  }
-
   .textarea {
-    flex: 1;
+    width: 100%;
     font-family: var(--mono);
     font-size: 16px;
     padding: 14px;
@@ -103,6 +97,12 @@ const STYLES = `
 
   .textarea:focus {
     border-color: var(--accent);
+  }
+
+  .button-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
   }
 
   .btn {
@@ -119,6 +119,8 @@ const STYLES = `
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    flex: 1;
+    justify-content: center;
   }
 
   .btn:active {
@@ -133,18 +135,13 @@ const STYLES = `
   .btn-outline {
     background: transparent;
     color: #000;
+    flex: 0;
   }
 
   .btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
     transform: none;
-  }
-
-  .action-row {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
   }
 
   .card {
@@ -184,8 +181,8 @@ const STYLES = `
 
   @media (max-width: 500px) {
     .root { padding: 0 12px; gap: 20px; }
-    .row { flex-direction: column; }
-    .action-row { flex-direction: column; }
+    .button-row { flex-direction: column; }
+    .btn { flex: none; }
   }
 `;
 
@@ -304,26 +301,24 @@ export default function EchoGraph() {
         </section>
 
         <div className="controls">
-          <div className="row">
-            <textarea
-              className="textarea"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder='e.g. "graph y = x squared from 0 to 10"'
-              rows={2}
-              aria-label="Math expression"
-            />
-            <button className={`btn${recording ? ' recording' : ''}`} onClick={toggleRecording}>
-              {recording ? '■ STOP' : '🎤 SPEAK'}
-            </button>
-          </div>
+          <textarea
+            className="textarea"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder='e.g. "graph y = x squared from 0 to 10"'
+            rows={2}
+            aria-label="Math expression"
+          />
 
-          <div className="action-row">
+          <div className="button-row">
+            <button className={`btn${recording ? ' recording' : ''}`} onClick={toggleRecording}>
+              {recording ? 'STOP' : 'SPEAK'}
+            </button>
             <button className="btn" onClick={handleSend} disabled={!input.trim() || loading}>
               {loading ? <span className="spinner" /> : 'GRAPH IT'}
             </button>
-            {parsed && <button className="btn btn-outline" onClick={readAloud}>🔊 READ ALOUD</button>}
+            {parsed && <button className="btn btn-outline" onClick={readAloud}>READ ALOUD</button>}
           </div>
 
           {error && (
