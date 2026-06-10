@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import * as math from 'mathjs';
 import * as Tone from 'tone';
 
@@ -133,7 +133,6 @@ const STYLES = `
   }
 
   .btn {
-    --shadow-offset: 0.25rem;
     font-family: var(--font);
     font-size: 14px;
     font-weight: 700;
@@ -204,6 +203,12 @@ const STYLES = `
     box-shadow: none;
   }
 
+  .btn.autoplay-active {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: #fff;
+  }
+
   .card {
     border: 1px solid #000;
     border-radius: 4px;
@@ -267,9 +272,11 @@ export default function EchoGraph() {
   const [error, setError] = useState(null);
   const [sweepActive, setSweepActive] = useState(false);
   const [sweepX, setSweepX] = useState(0);
+  const [autoPlay, setAutoPlay] = useState(false);
   const graphRef = useRef(null);
   const synthRef = useRef(null);
   const pointsRef = useRef([]);
+  const autoPlayRef = useRef(null);
 
   const computePoints = useCallback(({ expression, xMin, xMax, step }) => {
     const node = math.parse(expression);
@@ -281,11 +288,24 @@ export default function EchoGraph() {
     return pts;
   }, []);
 
+  const playNoteAtPercent = useCallback((pct) => {
+    if (pointsRef.current.length === 0) return;
+    setSweepX(pct * 100);
+    const idx = Math.floor(pct * (pointsRef.current.length - 1));
+    const pt = pointsRef.current[idx];
+    if (!pt) return;
+    const freq = 200 + ((Math.max(-10, Math.min(10, pt.y)) + 10) / 20) * 1300;
+    if (!synthRef.current) synthRef.current = new Tone.Synth().toDestination();
+    if (Tone.context.state !== 'running') Tone.start();
+    synthRef.current.triggerAttackRelease(freq, '64n');
+  }, []);
+
   const handleSend = useCallback(async () => {
     if (!input.trim()) return;
     setLoading(true);
     setError(null);
     setParsed(null);
+    if (autoPlay) setAutoPlay(false);
     try {
       const res = await fetch('/api/parse', {
         method: 'POST',
@@ -306,26 +326,21 @@ export default function EchoGraph() {
     } finally {
       setLoading(false);
     }
-  }, [input, computePoints]);
+  }, [input, computePoints, autoPlay]);
 
   const onPointerMove = useCallback((e) => {
     if (!graphRef.current || pointsRef.current.length === 0) return;
     const rect = graphRef.current.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    setSweepX(pct * 100);
-    const idx = Math.floor(pct * (pointsRef.current.length - 1));
-    const pt = pointsRef.current[idx];
-    if (!pt) return;
-    const freq = 200 + ((Math.max(-10, Math.min(10, pt.y)) + 10) / 20) * 1300;
-    if (!synthRef.current) synthRef.current = new Tone.Synth().toDestination();
-    if (Tone.context.state !== 'running') Tone.start();
-    synthRef.current.triggerAttackRelease(freq, '64n');
-  }, []);
+    playNoteAtPercent(pct);
+  }, [playNoteAtPercent]);
 
   const onPointerEnter = useCallback(() => {
     if (pointsRef.current.length > 0) setSweepActive(true);
   }, []);
-  const onPointerLeave = useCallback(() => setSweepActive(false), []);
+  const onPointerLeave = useCallback(() => {
+    setSweepActive(false);
+  }, []);
 
   const onKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -349,6 +364,47 @@ export default function EchoGraph() {
   const readAloud = useCallback(() => {
     if (parsed) window.speechSynthesis.speak(new SpeechSynthesisUtterance(parsed.explanation));
   }, [parsed]);
+
+  const toggleAutoPlay = useCallback(() => {
+    if (!parsed || pointsRef.current.length === 0) return;
+    setAutoPlay((prev) => !prev);
+  }, [parsed]);
+
+  useEffect(() => {
+    if (!autoPlay || pointsRef.current.length === 0) {
+      if (autoPlayRef.current) {
+        clearInterval(autoPlayRef.current);
+        autoPlayRef.current = null;
+      }
+      return;
+    }
+
+    const duration = 4000; // ms for full sweep
+    const stepMs = 40;
+    let elapsed = 0;
+
+    const interval = setInterval(() => {
+      elapsed += stepMs;
+      const pct = Math.min(1, elapsed / duration);
+      playNoteAtPercent(pct);
+      if (pct >= 1) {
+        clearInterval(interval);
+        autoPlayRef.current = null;
+        setAutoPlay(false);
+        setSweepActive(false);
+      }
+    }, stepMs);
+
+    autoPlayRef.current = interval;
+    setSweepActive(true);
+
+    return () => {
+      if (autoPlayRef.current) {
+        clearInterval(autoPlayRef.current);
+        autoPlayRef.current = null;
+      }
+    };
+  }, [autoPlay, playNoteAtPercent]);
 
   return (
     <>
@@ -425,6 +481,14 @@ export default function EchoGraph() {
             {parsed && (
               <button className="btn-outline" onClick={readAloud}>
                 READ ALOUD
+              </button>
+            )}
+            {parsed && (
+              <button
+                className={`btn-outline${autoPlay ? ' autoplay-active' : ''}`}
+                onClick={toggleAutoPlay}
+              >
+                {autoPlay ? 'STOP PLAY' : 'AUTO PLAY'}
               </button>
             )}
           </div>
