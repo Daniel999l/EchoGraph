@@ -10,7 +10,6 @@ import {
   DURATION,
 } from '../scripts/motion.js';
 
-// Scoped class prefix: eg- (EchoGraph)
 const SCOPED_STYLES = `
   .eg-root {
     display: grid;
@@ -20,6 +19,7 @@ const SCOPED_STYLES = `
     margin: 0 auto;
     padding: var(--space-5);
     gap: var(--space-5);
+    transform-style: preserve-3d;
   }
 
   .eg-header {
@@ -28,6 +28,7 @@ const SCOPED_STYLES = `
     justify-content: space-between;
     padding-bottom: var(--space-4);
     border-bottom: 2px solid var(--color-text);
+    transform: translateZ(12px);
   }
 
   .eg-brand {
@@ -58,6 +59,12 @@ const SCOPED_STYLES = `
     background: var(--color-surface);
     position: relative;
     overflow: hidden;
+    transform: translateZ(0);
+    transition: transform ${DURATION.normal}ms ease;
+  }
+
+  .eg-graph-area:hover {
+    transform: translateZ(var(--depth-card));
   }
 
   .eg-graph-placeholder {
@@ -87,6 +94,7 @@ const SCOPED_STYLES = `
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
+    transform: translateZ(6px);
   }
 
   .eg-record-row {
@@ -107,12 +115,13 @@ const SCOPED_STYLES = `
     resize: none;
     min-height: 56px;
     outline: none;
-    transition: border-color ${DURATION.fast}ms ease;
+    transition: border-color ${DURATION.fast}ms ease, transform ${DURATION.press}ms ease;
   }
 
   .eg-textarea:focus-visible {
     border-color: var(--color-primary);
     outline: none;
+    transform: translateZ(var(--depth-press));
   }
 
   .eg-btn {
@@ -129,12 +138,18 @@ const SCOPED_STYLES = `
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
+    transform: translateZ(4px);
+    transition: transform ${DURATION.press}ms ease;
     ${pressScale}
   }
 
   .eg-btn:focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 3px;
+  }
+
+  .eg-btn:active {
+    transform: translateZ(0) scale(0.97);
   }
 
   .eg-btn.recording {
@@ -166,6 +181,8 @@ const SCOPED_STYLES = `
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
+    transform: translateZ(2px);
+    transition: transform ${DURATION.press}ms ease;
     ${pressScale}
   }
 
@@ -174,13 +191,23 @@ const SCOPED_STYLES = `
     outline-offset: 3px;
   }
 
+  .eg-btn-outline:active {
+    transform: translateZ(0) scale(0.97);
+  }
+
   .eg-response-card {
     border: 3px solid var(--color-text);
     border-radius: var(--radius-card);
     padding: var(--space-4);
     background: var(--color-surface);
     min-height: 64px;
+    transform: translateZ(0);
+    transition: transform ${DURATION.fast}ms ease;
     ${cardHover}
+  }
+
+  .eg-response-card:hover {
+    transform: translateZ(var(--depth-card));
   }
 
   .eg-response-label {
@@ -238,6 +265,14 @@ const SCOPED_STYLES = `
     .eg-action-row {
       flex-direction: column;
     }
+
+    /* Flatten depth on mobile for performance */
+    .eg-header,
+    .eg-controls,
+    .eg-btn,
+    .eg-btn-outline {
+      transform: translateZ(0);
+    }
   }
 
   ${reducedMotion}
@@ -254,7 +289,6 @@ export default function EchoGraph() {
 
   const handleSend = useCallback(() => {
     if (!input.trim()) return;
-    // Placeholder: will connect to Groq API route
     setResponse({ text: `Parsing: "${input.trim()}" — sonification engine ready.` });
     setInput('');
   }, [input]);
@@ -333,7 +367,6 @@ export default function EchoGraph() {
     <>
       <style>{SCOPED_STYLES}</style>
       <div className="eg-root">
-        {/* Header */}
         <header className="eg-header">
           <h1 className="eg-brand">EchoGraph</h1>
           <span className="eg-badge" aria-label="Accessibility feature: voice-first math tool">
@@ -341,7 +374,6 @@ export default function EchoGraph() {
           </span>
         </header>
 
-        {/* Graph Display */}
         <section
           className="eg-graph-area"
           ref={graphRef}
@@ -364,7 +396,6 @@ export default function EchoGraph() {
           />
         </section>
 
-        {/* Controls */}
         <div className="eg-controls">
           <div className="eg-record-row">
             <label htmlFor="eg-input" className="eg-sr-only">
@@ -412,7 +443,6 @@ export default function EchoGraph() {
             )}
           </div>
 
-          {/* Response */}
           {response && (
             <div
               className="eg-response-card"
