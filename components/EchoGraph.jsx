@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import * as math from 'mathjs';
 import * as Tone from 'tone';
 
 const STYLES = `
   :root {
-    --border: 4px solid #000;
+    --border: 2px solid #000;
     --bg: #f5f5f0;
     --card-bg: #fff;
     --accent: #ffcd00;
@@ -53,9 +53,12 @@ const STYLES = `
     font-size: 12px;
     font-weight: 700;
     padding: 6px 12px;
-    border: var(--border);
+    border: 1px solid #000;
+    border-radius: 4px;
     background: #000;
     color: #fff;
+    transform: translate(-0.15rem, -0.15rem);
+    box-shadow: 0.15rem 0.15rem #000;
   }
 
   .graph {
@@ -63,12 +66,25 @@ const STYLES = `
     align-items: center;
     justify-content: center;
     min-height: 300px;
-    border: var(--border);
+    border: 1px solid #000;
+    border-radius: 4px;
     background: var(--card-bg);
     position: relative;
     overflow: hidden;
     cursor: crosshair;
     user-select: none;
+    touch-action: none;
+    transform: translate(-0.25rem, -0.25rem);
+    box-shadow: 0.25rem 0.25rem #000;
+  }
+
+  .graph-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
   }
 
   .placeholder {
@@ -84,7 +100,6 @@ const STYLES = `
     width: 3px;
     background: var(--accent);
     pointer-events: none;
-    transition: left 40ms linear;
   }
 
   .controls {
@@ -98,11 +113,14 @@ const STYLES = `
     font-family: var(--mono);
     font-size: 16px;
     padding: 14px;
-    border: var(--border);
+    border: 1px solid #000;
+    border-radius: 4px;
     background: var(--card-bg);
     resize: none;
     min-height: 60px;
     outline: none;
+    transform: translate(-0.25rem, -0.25rem);
+    box-shadow: 0.25rem 0.25rem #000;
   }
 
   .textarea:focus {
@@ -120,8 +138,9 @@ const STYLES = `
     font-size: 14px;
     font-weight: 700;
     padding: 14px 24px;
-    border: var(--border);
-    background: var(--accent, #ffcd00);
+    border: 1px solid #000;
+    border-radius: 4px;
+    background: var(--accent);
     color: #000;
     cursor: pointer;
     text-align: center;
@@ -131,10 +150,16 @@ const STYLES = `
     gap: 8px;
     flex: 1;
     justify-content: center;
+    transition: 0.2s;
+    transform: translate(-0.25rem, -0.25rem);
+    box-shadow: 0.25rem 0.25rem #000;
   }
 
   .btn:active {
-    transform: translate(2px, 2px);
+    transform: translate(0);
+    box-shadow: none;
+    background: #000;
+    color: #fff;
   }
 
   .btn.recording {
@@ -144,21 +169,88 @@ const STYLES = `
   }
 
   .btn-outline {
-    background: var(--card-bg);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 14px 24px;
+    border: 1px solid #000;
+    border-radius: 4px;
+    background: #fff;
     color: #000;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     flex: 0;
+    justify-content: center;
+    transition: 0.2s;
+    transform: translate(-0.25rem, -0.25rem);
+    box-shadow: 0.25rem 0.25rem #000;
   }
 
-  .btn:disabled {
+  .btn-outline:active {
+    transform: translate(0);
+    box-shadow: none;
+    background: #000;
+    color: #fff;
+  }
+
+  .btn:disabled,
+  .btn-outline:disabled {
     opacity: 0.4;
     cursor: not-allowed;
     transform: none;
+    box-shadow: none;
+  }
+
+  .btn.autoplay-active {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: #fff;
+  }
+
+  .btn-example {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 14px;
+    border: 1px solid #000;
+    border-radius: 4px;
+    background: var(--card-bg);
+    color: #000;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  .btn-example:active {
+    transform: translate(0) !important;
+    box-shadow: none !important;
+  }
+
+  .examples-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .examples-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    opacity: 0.6;
   }
 
   .card {
-    border: var(--border);
+    border: 1px solid #000;
+    border-radius: 4px;
     background: var(--card-bg);
     padding: 20px;
+    transform: translate(-0.25rem, -0.25rem);
+    box-shadow: 0.25rem 0.25rem #000;
   }
 
   .label {
@@ -207,6 +299,14 @@ const STYLES = `
   }
 `;
 
+const EXAMPLES = [
+  "graph y = 2x + 3 from -5 to 5",
+  "graph y = x squared between -10 and 10 step 0.5",
+  "graph sin(x) from 0 to 2\u03c0 step 0.05",
+  "graph y = 1/x from 1 to 20",
+  "graph y = x cubed + 2x",
+];
+
 export default function EchoGraph() {
   const [input, setInput] = useState('');
   const [recording, setRecording] = useState(false);
@@ -215,65 +315,122 @@ export default function EchoGraph() {
   const [error, setError] = useState(null);
   const [sweepActive, setSweepActive] = useState(false);
   const [sweepX, setSweepX] = useState(0);
+  const [autoPlay, setAutoPlay] = useState(false);
   const graphRef = useRef(null);
   const synthRef = useRef(null);
   const pointsRef = useRef([]);
+  const autoPlayRef = useRef(null);
+  const sweepNoteRef = useRef(false); // track if sound is currently playing
 
   const computePoints = useCallback(({ expression, xMin, xMax, step }) => {
-    const node = math.parse(expression);
-    const compiled = node.compile();
-    const pts = [];
-    for (let x = xMin; x <= xMax; x += step) {
-      pts.push({ x, y: compiled.evaluate({ x }) });
+    try {
+      const node = math.parse(expression);
+      const compiled = node.compile();
+      const pts = [];
+      for (let x = xMin; x <= xMax; x += step) {
+        pts.push({ x, y: compiled.evaluate({ x }) });
+      }
+      return pts;
+    } catch (err) {
+      throw new Error(
+        'Unable to graph this expression. Check your input and try again.'
+      );
     }
-    return pts;
   }, []);
+
+  const getSynth = useCallback(async () => {
+    if (!synthRef.current) {
+      await Tone.start();
+      synthRef.current = new Tone.Synth().toDestination();
+    }
+    return synthRef.current;
+  }, []);
+
+  const playNoteAtPercent = useCallback(async (pct, start = false) => {
+    const synth = await getSynth();
+    if (pointsRef.current.length === 0) return;
+    setSweepX(pct * 100);
+    const idx = Math.floor(pct * (pointsRef.current.length - 1));
+    const pt = pointsRef.current[idx];
+    if (!pt) return;
+    const freq = 200 + ((Math.max(-10, Math.min(10, pt.y)) + 10) / 20) * 1300;
+
+    if (start) {
+      // begin continuous note
+      if (Tone.context.state !== 'running') await Tone.start();
+      synth.triggerAttack(freq);
+      sweepNoteRef.current = true;
+    } else {
+      // ramp to new frequency
+      synth.frequency.rampTo(freq, 0.05);
+    }
+  }, [getSynth]);
+
+  const stopNote = useCallback(async () => {
+    const synth = await getSynth();
+    if (sweepNoteRef.current) {
+      synth.triggerRelease();
+      sweepNoteRef.current = false;
+    }
+  }, [getSynth]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim()) return;
     setLoading(true);
     setError(null);
     setParsed(null);
+    if (autoPlay) setAutoPlay(false);
     try {
       const res = await fetch('/api/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ input: input.trim() }),
       });
-      if (!res.ok) throw new Error('Failed to parse input');
+      if (!res.ok) {
+        const msg = await res.json().then((d) => d.error).catch(() => null);
+        throw new Error(msg || 'Failed to parse input');
+      }
       const data = await res.json();
       data.xMin ??= -10;
       data.xMax ??= 10;
       data.step ??= 0.1;
-      pointsRef.current = computePoints(data);
+      const pts = computePoints(data);
+      pointsRef.current = pts;
       setParsed(data);
       setInput('');
       setSweepX(0);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [input, computePoints]);
+  }, [input, computePoints, autoPlay]);
 
-  const onPointerMove = useCallback((e) => {
-    if (!graphRef.current || pointsRef.current.length === 0) return;
+  const onPointerDown = useCallback(async (e) => {
+    e.target.setPointerCapture(e.pointerId);
+    setSweepActive(true);
     const rect = graphRef.current.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    setSweepX(pct * 100);
-    const idx = Math.floor(pct * (pointsRef.current.length - 1));
-    const pt = pointsRef.current[idx];
-    if (!pt) return;
-    const freq = 200 + ((Math.max(-10, Math.min(10, pt.y)) + 10) / 20) * 1300;
-    if (!synthRef.current) synthRef.current = new Tone.Synth().toDestination();
-    if (Tone.context.state !== 'running') Tone.start();
-    synthRef.current.triggerAttackRelease(freq, '64n');
-  }, []);
+    await playNoteAtPercent(pct, true);
+  }, [playNoteAtPercent]);
 
-  const onPointerEnter = useCallback(() => {
-    if (pointsRef.current.length > 0) setSweepActive(true);
-  }, []);
-  const onPointerLeave = useCallback(() => setSweepActive(false), []);
+  const onPointerMove = useCallback(async (e) => {
+    if (!graphRef.current || pointsRef.current.length === 0) return;
+    if (!sweepNoteRef.current) return; // only update if note is active (pointer down)
+    const rect = graphRef.current.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    await playNoteAtPercent(pct, false);
+  }, [playNoteAtPercent]);
+
+  const onPointerUp = useCallback(async () => {
+    setSweepActive(false);
+    await stopNote();
+  }, [stopNote]);
+
+  const onPointerCancel = useCallback(async () => {
+    setSweepActive(false);
+    await stopNote();
+  }, [stopNote]);
 
   const onKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -298,6 +455,55 @@ export default function EchoGraph() {
     if (parsed) window.speechSynthesis.speak(new SpeechSynthesisUtterance(parsed.explanation));
   }, [parsed]);
 
+  const toggleAutoPlay = useCallback(() => {
+    if (!parsed || pointsRef.current.length === 0) return;
+    setAutoPlay((prev) => !prev);
+  }, [parsed]);
+
+  const handleExampleClick = useCallback((example) => {
+    setInput(example);
+    setError(null);
+  }, []);
+
+  useEffect(() => {
+    if (!autoPlay || pointsRef.current.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      const synth = await getSynth();
+      if (cancelled) return;
+      if (Tone.context.state !== 'running') await Tone.start();
+      await playNoteAtPercent(0, true);
+      setSweepActive(true);
+
+      const duration = 4000;
+      const stepMs = 40;
+      let elapsed = 0;
+
+      const interval = setInterval(async () => {
+        if (cancelled) return;
+        elapsed += stepMs;
+        const pct = Math.min(1, elapsed / duration);
+        await playNoteAtPercent(pct, false);
+        if (pct >= 1) {
+          clearInterval(interval);
+          await stopNote();
+          setSweepActive(false);
+          setAutoPlay(false);
+        }
+      }, stepMs);
+    })();
+
+    return () => {
+      cancelled = true;
+      stopNote();
+      setSweepActive(false);
+    };
+  }, [autoPlay, playNoteAtPercent, stopNote, getSynth]);
+
   return (
     <>
       <style>{STYLES}</style>
@@ -310,19 +516,54 @@ export default function EchoGraph() {
         <section
           className="graph"
           ref={graphRef}
+          onPointerDown={onPointerDown}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
           onPointerMove={onPointerMove}
-          onPointerEnter={onPointerEnter}
-          onPointerLeave={onPointerLeave}
           tabIndex={0}
           aria-label="Interactive graph area"
         >
           {!parsed && !loading && <span className="placeholder">SAY OR TYPE A MATH EXPRESSION</span>}
           {loading && <span className="spinner" />}
+          {parsed && pointsRef.current.length > 0 && (
+            <svg
+              className="graph-svg"
+              viewBox={`0 0 ${parsed.xMax - parsed.xMin} ${parsed.xMax - parsed.xMin}`}
+              preserveAspectRatio="none"
+            >
+              <polyline
+                points={pointsRef.current
+                  .map((p) => {
+                    const xRange = parsed.xMax - parsed.xMin;
+                    const xShift = p.x - parsed.xMin;
+                    const yShift = -p.y + xRange / 2;
+                    return `${xShift},${yShift}`;
+                  })
+                  .join(' ')}
+                fill="none"
+                stroke="var(--text)"
+                strokeWidth="0.2"
+              />
+            </svg>
+          )}
           <div
-            className={`sweep${sweepActive ? '' : ''}`}
+            className="sweep"
             style={{ left: `${sweepX}%`, opacity: sweepActive ? 1 : 0 }}
           />
         </section>
+
+        <div className="examples-section">
+          <span className="examples-label">Try one:</span>
+          {EXAMPLES.map((ex) => (
+            <button
+              key={ex}
+              className="btn-example"
+              onClick={() => handleExampleClick(ex)}
+            >
+              {ex}
+            </button>
+          ))}
+        </div>
 
         <div className="controls">
           <textarea
@@ -350,8 +591,16 @@ export default function EchoGraph() {
               {loading ? <span className="spinner" /> : 'GRAPH IT'}
             </button>
             {parsed && (
-              <button className="btn btn-outline" onClick={readAloud}>
+              <button className="btn-outline" onClick={readAloud}>
                 READ ALOUD
+              </button>
+            )}
+            {parsed && (
+              <button
+                className={`btn-outline${autoPlay ? ' autoplay-active' : ''}`}
+                onClick={toggleAutoPlay}
+              >
+                {autoPlay ? 'STOP PLAY' : 'AUTO PLAY'}
               </button>
             )}
           </div>
